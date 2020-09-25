@@ -75,7 +75,7 @@ for (i in 1:N){
 
 #Data Cleaning
 Variable ATMP and WTMP were converted to $double$ and a new variable 'YYYY_MM_DD' was added to the dataset. The new variable is $date$ type. Data with temperature higher than 90℃ were deleted. Average daily temperature was first calculated by taking the mean of 24 hours temperature. Then, average monthly temperature was calculated by taking the mean of average daily temperature per month. The reason why temperature were calculated in this way was that all data was taken into consideration. 
-```{r echo = FALSE}
+```{r echo = FALSE eval = FALSE}
 MR_2 <- as_tibble(MR)
 #Change type of Air_tmp and Water_tmp from chr to dbl
 MR_2 <- MR_2 %>%
@@ -88,14 +88,15 @@ MR_2 <- MR_2 %>%
 MR_2 <- filter(MR_2,hh != "hr")
 
 #Get rid of abnormal data
-MR_2 <- filter(MR_2,Air_tmp < 99, Water_tmp < 99)
+MR_2_1 <- filter(MR_2,Air_tmp < 99)
+MR_2_2 <- filter(MR_2,Water_tmp < 99)
 
 #Get daily average Tmp
-MR_3_1 <- select(MR_2,-c(2,3,4,7)) %>%
+MR_3_1 <- select(MR_2_1,-c(2,3,4,7)) %>%
   group_by(YYYY_MM_DD) %>%
   summarize(Avg_Air_tmp = mean(Air_tmp))
 
-MR_3_2 <- select(MR_2,-c(2,3,4,6)) %>%
+MR_3_2 <- select(MR_2_2,-c(2,3,4,6)) %>%
   group_by(YYYY_MM_DD) %>%
   summarize(Avg_Water_tmp = mean(Water_tmp))
 
@@ -120,19 +121,19 @@ Data was first plotted to see if any model could be considered. Time series mode
 ```{r echo = FALSE}
 #Plot data
 #Average Tmp
-MR_4 %>%
+MR_4_1 %>%
   ggplot(aes(x = month,y = Avg_Air_tmp)) + 
   geom_line() +
   geom_point()
 
-MR_4 %>%
+MR_4_2 %>%
   ggplot(aes(x = month,y = Avg_Water_tmp)) + 
   geom_line() +
   geom_point()
 ```
 
 ##Time Series Model
-Given it was a seasonal data, seasonal ARIMA model was considered. The trend of data within a year was check. After setting the seasonal period $s$ to be 12, ACF and PACF were plotted. By checking the plot, model $ARIMA (1,0,0) \times (0,1,1)_{12}$ was considered. The predicted data in the next 20 years was plotted. From this model, conclusion about global warming can't be drawn. No strong sign of rise or drop in temperature was shown from model. However, a weak sign of drop in both air and sea surface temperature was shown in the predicted data plot.
+Given it was a seasonal data, seasonal ARIMA model was considered. The trend of data within a year was check. After setting the seasonal period $s$ to be 12, ACF and PACF were plotted. By checking the plot, model $ARIMA (1,0,0) \times (0,1,1)_{12}$ was considered. The predicted data in the next 20 years was plotted. From this model, conclusion about global warming can't be drawn. No strong sign of rise or drop in temperature was shown from model. However, sign of rise in air temperature and drop in sea surface temperature were shown in the predicted data plot.
 ```{r echo = FALSE}
 #Check the trend within a year
 MR_1988 <- filter(MR_4,year(month)==1988)
@@ -181,7 +182,7 @@ sarima.for(TS_MR_4_2,240,1,0,0,0,1,1,12)
 ```
 
 ##Linear Regression Model
-For linear regression model, data was divided into 12 month. Data for each month was fitted to a linear regression model. All fitted lines and data were plotted in the same page. Red color indicated the upward trend and blue color indicated the downward trend. For air temperatue, fitted lines from May to August have positive slope. For sea surface temperature, fitted lines from May to June and August have positive slope. It is likely that temperature in hot seasons like summer is increasing while decreasing in other seasons.
+For linear regression model, data was divided into 12 month. Data for each month was fitted to a linear regression model. All fitted lines and data were plotted in the same page. Red color indicated the upward trend and blue color indicated the downward trend. For air temperatue, fitted lines from all months have positive slope. For sea surface temperature, fitted lines from May to June and August have positive slope. It is suggested that air temperature is increasing in these 30 years and sea surface temperature is increasing in summer season.
 ```{r echo = FALSE}
 #Red indicates an upward trend
 #Blue indicates an downward trend
@@ -224,12 +225,8 @@ for(i in 1:12){
   }
 }
 
-
+```
 ```
 #Conclusion
-Two models just offer us a direction about climate change. Firm conclusion about climate change can not be drawn. But still, some useful information was shown from the data and models. From time series model, a predicted dropping trend of temperature was shown. For linear regression model, a rising trend of temperature in summer was shown. Conjecture could be made. A possible reason could be that global warming is casuing summer to be hotter while the melting of glaciers is casuing winter to be colder.
-```{r}
-filter(MR_2,YYYY==16)
-?acf2
-```
+Two models just offer us a direction about climate change. Firm conclusion about climate change can not be drawn. But still, some useful information was shown from the data and models. From time series model, both predicted dropping and rising trend of temperature were shown. For linear regression model, a strong rising trend of air temperature was shown. Based on the data of air temperature, a sign of global warming was indicated. However, based on the data of sea surface temperature, sign of global warming is not that clear. More research is needed.
 
