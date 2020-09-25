@@ -21,68 +21,72 @@ This report seeks to use 20-years of data NDBC Station 44013 to analyze climate 
 # 2. Data Collection
 Data was abstracted from NDBC website. 30-years of data was collected from 1987 to 2016. Six variables were selected namely, year(YY), month(MM), day(DD), hour(hh), air temperature(ATMP) and sea surface temperature(WTMP). In order to see how the trend of temperature change, the only two related variables ATMP and WTMP were selected.
 ```{r include = FALSE}
-# ### make URLs
-# 
-# url1 <- "http://www.ndbc.noaa.gov/view_text_file.php?filename=mlrf1h"
-# url2 <- ".txt.gz&dir=data/historical/stdmet/"
-# 
-# years <- c(1987:2016)
-# 
-# urls <- str_c(url1, years, url2, sep = "")
-# 
-# filenames <- str_c("ma", years, sep = "")
-# 
-# ###  Read the data from the website
-# 
-# N <- length(urls)
-# 
-# options(timeout= 40000000)
-# 
-# for (i in 1:N){
-#   suppressMessages( ###  This stops the annoying messages on your screen.  Do this last.
-#     assign(filenames[i], read_table(urls[i], col_names = TRUE))
-#   )
-# 
-#   file <- get(filenames[i])
-# 
-#   x <- ncol(file)
-# 
-# 
-# #Since data from different year has different columns, we seperate them and only take the columns we want
-#   if(x %in% c(15,16)){
-#       colnames(file)[1] <-"YYYY"
-#       colnames(file)[2] <-"MM"
-#       colnames(file)[3] <-"DD"
-#       colnames(file)[4] <-"hh"
-#       colnames(file)[12] <-"Air_tmp"
-#       colnames(file)[13] <-"Water_tmp"
-#       file <- file[,c(1,2,3,4,12,13)]
-#   }
-#   if(x==17){
-#       colnames(file)[1] <-"YYYY"
-#       colnames(file)[2] <-"MM"
-#       colnames(file)[3] <-"DD"
-#       colnames(file)[4] <-"hh"
-#       colnames(file)[13] <-"Air_tmp"
-#       colnames(file)[14] <-"Water_tmp"
-#       file <- file[,c(1,2,3,4,13,14)]
-#   }
-# 
-# #Combine all dataframes
-#   if(i == 1){
-#     MR <- file
-#   }
-# 
-#   else{
-#     MR <- rbind.data.frame(MR, file)
-#   }
-# }
+#You can use this chunk to read from website, however sometimes due to connection issue, this could fail to compile. Therefore, you can directly read local csv file in next chunk. Each method just directly uncomment the code.
+
+### make URLs
+
+url1 <- "http://www.ndbc.noaa.gov/view_text_file.php?filename=mlrf1h"
+url2 <- ".txt.gz&dir=data/historical/stdmet/"
+
+years <- c(1987:2016)
+
+urls <- str_c(url1, years, url2, sep = "")
+
+filenames <- str_c("ma", years, sep = "")
+
+###  Read the data from the website
+
+N <- length(urls)
+
+options(timeout= 40000000)
+
+for (i in 1:N){
+  suppressMessages( ###  This stops the annoying messages on your screen.  Do this last.
+    assign(filenames[i], read_table(urls[i], col_names = TRUE))
+  )
+
+  file <- get(filenames[i])
+
+  x <- ncol(file)
+
+
+#Since data from different year has different columns, we seperate them and only take the columns we want
+  if(x %in% c(15,16)){
+      colnames(file)[1] <-"YYYY"
+      colnames(file)[2] <-"MM"
+      colnames(file)[3] <-"DD"
+      colnames(file)[4] <-"hh"
+      colnames(file)[12] <-"Air_tmp"
+      colnames(file)[13] <-"Water_tmp"
+      file <- file[,c(1,2,3,4,12,13)]
+  }
+  if(x==17){
+      colnames(file)[1] <-"YYYY"
+      colnames(file)[2] <-"MM"
+      colnames(file)[3] <-"DD"
+      colnames(file)[4] <-"hh"
+      colnames(file)[13] <-"Air_tmp"
+      colnames(file)[14] <-"Water_tmp"
+      file <- file[,c(1,2,3,4,13,14)]
+  }
+
+#Combine all dataframes
+  if(i == 1){
+    MR <- file
+  }
+
+  else{
+    MR <- rbind.data.frame(MR, file)
+  }
+}
 ```
 
 # 3. Data Cleaning
 Variable ATMP and WTMP were converted to $double$ and a new variable 'YYYY_MM_DD' was added to the dataset. The new variable is $date$ type. Data with temperature higher than 90℃ were deleted. Average daily temperature was first calculated by taking the mean of 24 hours temperature. Then, average monthly temperature was calculated by taking the mean of average daily temperature per month. The reason why temperature were calculated in this way was that all data was taken into consideration. 
 ```{r include = FALSE}
-MR <- read.csv("MR_data_1987_2016_original.csv",header = TRUE)
+#This is the second method to get the data instead of reading it from website. Just commend the first chunk and uncommend the following line if you wish you use local csv.file.
+
+# MR <- read.csv("MR_data_1987_2016_original.csv",header = TRUE)
 MR_2 <- as_tibble(MR)
 
 #Change type of Air_tmp and Water_tmp from chr to dbl
@@ -230,6 +234,6 @@ for(i in 1:12){
 ```
 
 # 5. Conclusion
-From time series model, both predicted dropping and rising trend of temperature were shown. For linear regression model, a strong rising trend of air temperature was shown. Based on the data of air temperature, a sign of global warming was indicated. However, based on the data of sea surface temperature, sign of global warming is not that clear. More research is needed.
+From time series model, both predicted dropping and rising trend of temperature were shown. For linear regression model, a strong rising trend of air temperature was shown. Based on the data of air temperature, a sign of global warming was indicated. However, based on the data of sea surface temperature, sign of global warming is not that clear.
 
 
