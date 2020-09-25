@@ -1,5 +1,5 @@
 ---
-title: "Buoy"
+title: "Buoy Project"
 author: "Jason Huang"
 date: "2020/9/25"
 output: pdf_document
@@ -10,9 +10,13 @@ knitr::opts_chunk$set(echo = TRUE)
 pacman::p_load("knitr","ggplot2","rstanarm","tidyverse","lubridate","zoo","astsa")
 ```
 
-## Abstract data from website
 
-```{r}
+#Abstract
+This report seeks to use 20-years of data NDBC Station 44013 to analyze climate change problem.
+
+#Data Collection
+Data was abstracted from NDBC website. 30-years of data was collected from 1987 to 2016. Six variables were selected namely, year(YY), month(MM), day(DD), hour(hh), air temperature(ATMP) and sea surface temperature(WTMP). In order to see how the trend of temperature change, the only two related variables ATMP and WTMP were selected.
+```{r echo = FALSE}
 ### make URLs
 
 url1 <- "http://www.ndbc.noaa.gov/view_text_file.php?filename=mlrf1h"
@@ -69,8 +73,9 @@ for (i in 1:N){
 }
 ```
 
-## Clean data
-```{r}
+#Data Cleaning
+Variable ATMP and WTMP were converted to $double$ and a new variable 'YYYY_MM_DD' was added to the dataset. The new variable is $date$ type. Data with temperature higher than 90℃ were deleted. Average daily temperature was first calculated by taking the mean of 24 hours temperature. Then, average monthly temperature was calculated by taking the mean of average daily temperature per month. The reason why temperature were calculated in this way was that all data was taken into consideration. 
+```{r echo = FALSE}
 MR_2 <- as_tibble(MR)
 #Change type of Air_tmp and Water_tmp from chr to dbl
 MR_2 <- MR_2 %>%
@@ -83,7 +88,7 @@ MR_2 <- MR_2 %>%
 MR_2 <- filter(MR_2,hh != "hr")
 
 #Get rid of abnormal data
-MR_2 <- filter(MR_2,Air_tmp < 100, Water_tmp < 100)
+MR_2 <- filter(MR_2,Air_tmp < 99, Water_tmp < 99)
 
 #Get daily average Tmp
 MR_3_1 <- select(MR_2,-c(2,3,4,7)) %>%
@@ -105,14 +110,16 @@ MR_4_2 <- MR_3_2 %>%
 
 MR_4 <- inner_join(MR_4_1,MR_4_2)
 
+
 #Export data
 write_csv(MR_4,"MR_data_1987_2016.csv")
-
-view(MR_4)
 ```
-##Fit model
-```{r}
+
+#Model Fitting
+Data was first plotted to see if any model could be considered. Time series model was considered given the shape of the plot. Also, linear regression model was considered since it was a very simple model and the sign of the slope can be used to check the trend of climate change.
+```{r echo = FALSE}
 #Plot data
+#Average Tmp
 MR_4 %>%
   ggplot(aes(x = month,y = Avg_Air_tmp)) + 
   geom_line() +
@@ -122,17 +129,18 @@ MR_4 %>%
   ggplot(aes(x = month,y = Avg_Water_tmp)) + 
   geom_line() +
   geom_point()
+```
 
+##Time Series Model
+Given it was a seasonal data, seasonal ARIMA model was considered. The trend of data within a year was check. After setting the seasonal period $s$ to be 12, ACF and PACF were plotted. By checking the plot, model $ARIMA (1,0,0) \times (0,1,1)_{12}$ was considered. The predicted data in the next 20 years was plotted. From this model, conclusion about global warming can't be drawn. No strong sign of rise or drop in temperature was shown from model. However, a weak sign of drop in both air and sea surface temperature was shown in the predicted data plot.
+```{r echo = FALSE}
 #Check the trend within a year
 MR_1988 <- filter(MR_4,year(month)==1988)
 MR_1988 %>%
   ggplot(aes(x = month, y = Avg_Air_tmp)) +
   geom_line() +
   geom_point()
-```
 
-###Fit time series model
-```{r}
 #create TS
 TS_MR_4_1 <- ts(select(MR_4_1,Avg_Air_tmp))
 
@@ -147,27 +155,38 @@ plot(diff12,type="b")
 acf2(diff12,48)
 
 #fit model
-sarima(TS_MR_4_1,1,0,0,0,1,1,12)
+sarima(TS_MR_4_1,1,0,0,0,1,1,12,details = FALSE,Model = FALSE)
 
 #predict
-sarima.for(TS_MR_4_1,24,1,0,0,0,1,1,12)
+sarima.for(TS_MR_4_1,240,1,0,0,0,1,1,12)
 
-#repeat process for water_tmp
+#create TS
 TS_MR_4_2 <- ts(select(MR_4_2,Avg_Water_tmp))
+
+#check trend
 plot(TS_MR_4_2,type="b")
+
+#set seasonal index
 diff12 = diff(TS_MR_4_2,12)
 plot(diff12,type="b")
+
+#check acf pacf
 acf2(diff12,48)
-sarima(TS_MR_4_2,1,0,0,0,1,1,12)
-sarima.for(TS_MR_4_2,24,1,0,0,0,1,1,12)
+
+#fit model
+sarima(TS_MR_4_2,1,0,0,0,1,1,12,details = FALSE,Model = FALSE)
+
+#predict
+sarima.for(TS_MR_4_2,240,1,0,0,0,1,1,12)
 ```
 
-###Fit lm model
-```{r}
+##Linear Regression Model
+For linear regression model, data was divided into 12 month. Data for each month was fitted to a linear regression model. All fitted lines and data were plotted in the same page. Red color indicated the upward trend and blue color indicated the downward trend. For air temperatue, fitted lines from May to August have positive slope. For sea surface temperature, fitted lines from May to June and August have positive slope. It is likely that temperature in hot seasons like summer is increasing while decreasing in other seasons.
+```{r echo = FALSE}
 #Red indicates an upward trend
 #Blue indicates an downward trend
 
-#plot air_tmp
+#plot air_tmp average
 par(mfrow=c(3,4))
 for(i in 1:12){
   LM_MR_4_1 <- filter(MR_4_1,month(month)==i)
@@ -204,9 +223,13 @@ for(i in 1:12){
   
   }
 }
+
+
 ```
-
-
+#Conclusion
+Two models just offer us a direction about climate change. Firm conclusion about climate change can not be drawn. But still, some useful information was shown from the data and models. From time series model, a predicted dropping trend of temperature was shown. For linear regression model, a rising trend of temperature in summer was shown. Conjecture could be made. A possible reason could be that global warming is casuing summer to be hotter while the melting of glaciers is casuing winter to be colder.
 ```{r}
-
+filter(MR_2,YYYY==16)
+?acf2
 ```
+
