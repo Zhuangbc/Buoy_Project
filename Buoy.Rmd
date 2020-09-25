@@ -16,7 +16,7 @@ This report seeks to use 20-years of data NDBC Station 44013 to analyze climate 
 
 #Data Collection
 Data was abstracted from NDBC website. 30-years of data was collected from 1987 to 2016. Six variables were selected namely, year(YY), month(MM), day(DD), hour(hh), air temperature(ATMP) and sea surface temperature(WTMP). In order to see how the trend of temperature change, the only two related variables ATMP and WTMP were selected.
-```{r echo = FALSE}
+```{r include = FALSE}
 ### make URLs
 
 url1 <- "http://www.ndbc.noaa.gov/view_text_file.php?filename=mlrf1h"
@@ -75,7 +75,7 @@ for (i in 1:N){
 
 #Data Cleaning
 Variable ATMP and WTMP were converted to $double$ and a new variable 'YYYY_MM_DD' was added to the dataset. The new variable is $date$ type. Data with temperature higher than 90℃ were deleted. Average daily temperature was first calculated by taking the mean of 24 hours temperature. Then, average monthly temperature was calculated by taking the mean of average daily temperature per month. The reason why temperature were calculated in this way was that all data was taken into consideration. 
-```{r echo = FALSE,eval = FALSE}
+```{r include = FALSE}
 MR_2 <- as_tibble(MR)
 #Change type of Air_tmp and Water_tmp from chr to dbl
 MR_2 <- MR_2 %>%
@@ -134,7 +134,7 @@ MR_4_2 %>%
 
 ##Time Series Model
 Given it was a seasonal data, seasonal ARIMA model was considered. The trend of data within a year was check. After setting the seasonal period $s$ to be 12, ACF and PACF were plotted. By checking the plot, model $ARIMA (1,0,0) \times (0,1,1)_{12}$ was considered. The predicted data in the next 20 years was plotted. From this model, conclusion about global warming can't be drawn. No strong sign of rise or drop in temperature was shown from model. However, sign of rise in air temperature and drop in sea surface temperature were shown in the predicted data plot.
-```{r echo = FALSE}
+```{r echo = FALSE, results='hide'}
 #Check the trend within a year
 MR_1988 <- filter(MR_4,year(month)==1988)
 MR_1988 %>%
@@ -226,7 +226,7 @@ for(i in 1:12){
 }
 
 ```
-```
 #Conclusion
 Two models just offer us a direction about climate change. Firm conclusion about climate change can not be drawn. But still, some useful information was shown from the data and models. From time series model, both predicted dropping and rising trend of temperature were shown. For linear regression model, a strong rising trend of air temperature was shown. Based on the data of air temperature, a sign of global warming was indicated. However, based on the data of sea surface temperature, sign of global warming is not that clear. More research is needed.
+
 
