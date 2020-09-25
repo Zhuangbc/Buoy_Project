@@ -16,12 +16,14 @@ pacman::p_load("knitr","ggplot2","rstanarm","tidyverse","lubridate","zoo","astsa
 
 
 # 1. Abstract
-This report seeks to use 20-years of data NDBC Station 44013 to analyze climate change problem. After data collection and cleaning, time series model and linear regression model were used to fit the data. Conclusions were drawn based on the results of models.
+This report seeks to use 20-years of data NDBC Station 44013 to check whether there is global warming. After data collection and cleaning, time series model and linear regression model were used to fit the data. Conclusions were drawn based on the results of models.
 
 # 2. Data Collection
-Data was abstracted from NDBC website. 30-years of data was collected from 1987 to 2016. Six variables were selected namely, year(YY), month(MM), day(DD), hour(hh), air temperature(ATMP) and sea surface temperature(WTMP). In order to see how the trend of temperature change, the only two related variables ATMP and WTMP were selected.
+Data was abstracted from the NDBC website. 30-years of data was collected from 1987 to 2016. Six variables were selected namely, year(YY), month(MM), day(DD), hour(hh), air temperature(ATMP) and sea surface temperature(WTMP). In order to see how the trend of temperature change, the only two related variables ATMP and WTMP were selected.
 ```{r include = FALSE}
-#You can use this chunk to read from website, however sometimes due to connection issue, this could fail to compile. Therefore, you can directly read local csv file in next chunk. Each method just directly uncomment the code.
+#You can use this chunk to read from website, however sometimes due to connection issue, 
+#this could fail to compile. Therefore, you can directly read local csv file in next chunk. 
+#For each method just directly uncomment the code.
 
 ### make URLs
 
@@ -82,9 +84,10 @@ for (i in 1:N){
 ```
 
 # 3. Data Cleaning
-Variable ATMP and WTMP were converted to $double$ and a new variable 'YYYY_MM_DD' was added to the dataset. The new variable is $date$ type. Data with temperature higher than 90℃ were deleted. Average daily temperature was first calculated by taking the mean of 24 hours temperature. Then, average monthly temperature was calculated by taking the mean of average daily temperature per month. The reason why temperature were calculated in this way was that all data was taken into consideration. 
+Variable ATMP and WTMP were converted to $double$ and a new variable 'YYYY_MM_DD' was added to the dataset. The new variable is $date$ type. Data with temperatures higher than 90℃ were deleted. The Average daily temperature was first calculated by taking the mean of 24 hours temperature. Then, the average monthly temperature was calculated by taking the mean of the average daily temperature per month. The reason why the temperature were calculated in this way was that all data was taken into consideration. 
 ```{r include = FALSE}
-#This is the second method to get the data instead of reading it from website. Just commend the first chunk and uncommend the following line if you wish you use local csv.file.
+#This is the second method to get the data instead of reading it from website. 
+#Just commend the first chunk and uncommend the following line if you wish you use local csv.file.
 
 # MR <- read.csv("MR_data_1987_2016_original.csv",header = TRUE)
 MR_2 <- as_tibble(MR)
@@ -129,7 +132,7 @@ write_csv(MR_4,"MR_data_1987_2016.csv")
 ```
 
 # 4. Model Fitting
-Data was first plotted to see if any model could be considered. Time series model was considered given the shape of the plot. Also, linear regression model was considered since it was a very simple model and the sign of the slope can be used to check the trend of climate change.
+Data was first plotted to see if any model could be considered. The time series model was considered given the shape of the plot. Also, the linear regression model was considered since it was a very simple model and the sign of the slope can be used to check the trend of climate change.
 ```{r echo = FALSE, fig.width = 10 ,fig.height = 5}
 #Plot data
 #Average Tmp
@@ -145,8 +148,8 @@ MR_4_2 %>%
 ```
 
 ## 4.1 Time Series Model
-Given it was a seasonal data, seasonal ARIMA model was considered. The trend of data within a year was check. After setting the seasonal period $s$ to be 12, ACF and PACF were plotted. By checking the plot, model $ARIMA (1,0,0) \times (0,1,1)_{12}$ was considered. The predicted data in the next 20 years was plotted. From this model, conclusion about global warming can't be drawn. No strong sign of rise or drop in temperature was shown from model. However, sign of rise in air temperature and drop in sea surface temperature were shown in the predicted data plot.
-```{r echo = FALSE, results = "hide", warning = FALSE , fig.width = 10 ,fig.height = 5}
+Given it was a seasonal data, seasonal ARIMA model was considered. The trend of data within a year was check. After setting the seasonal period $s$ to be 12, ACF and PACF were plotted. By checking the plot, model $ARIMA (1,0,0) \times (0,1,1)_{12}$ was considered. The predicted data in the next 20 years was plotted. From this model, conclusion about global warming can't be drawn. No strong sign of rising or dropping in temperature was shown from the model. However, signs of a rise in air temperature and a drop in sea surface temperature were shown in the predicted data plot.
+```{r echo = FALSE, results = "hide", warning = FALSE , fig.width = 10 ,fig.height = 4}
 #Check the trend within a year
 MR_1988 <- filter(MR_4,year(month)==1988)
 MR_1988 %>%
@@ -156,39 +159,28 @@ MR_1988 %>%
 
 #create TS
 TS_MR_4_1 <- ts(select(MR_4_1,Avg_Air_tmp))
-
-#set seasonal index
-diff12 = diff(TS_MR_4_1,12)
-
-#check acf pacf
-par(mfrow=c(2,1))
-acf2(diff12,48)
-
-#fit model
-sarima(TS_MR_4_1,1,0,0,0,1,1,12,details = FALSE,Model = FALSE)
-
-#predict
-sarima.for(TS_MR_4_1,240,1,0,0,0,1,1,12)
-
-#create TS
 TS_MR_4_2 <- ts(select(MR_4_2,Avg_Water_tmp))
 
 #set seasonal index
-diff12 = diff(TS_MR_4_2,12)
+diff12_air_tmp = diff(TS_MR_4_1,12)
+diff12_water_tmp = diff(TS_MR_4_2,12)
 
 #check acf pacf
-par(mfrow=c(2,1))
-acf2(diff12,48)
+acf2(diff12_air_tmp,48)
+acf2(diff12_water_tmp,48)
 
 #fit model
+sarima(TS_MR_4_1,1,0,0,0,1,1,12,details = FALSE,Model = FALSE)
 sarima(TS_MR_4_2,1,0,0,0,1,1,12,details = FALSE,Model = FALSE)
 
 #predict
+sarima.for(TS_MR_4_1,240,1,0,0,0,1,1,12)
 sarima.for(TS_MR_4_2,240,1,0,0,0,1,1,12)
+
 ```
 
 ## 4.2 Linear Regression Model
-For linear regression model, data was divided into 12 month. Data for each month was fitted to a linear regression model. All fitted lines and data were plotted in the same page. Red color indicated the upward trend and blue color indicated the downward trend. For air temperatue, fitted lines from all months have positive slope. For sea surface temperature, fitted lines from May to June and August have positive slope. It is suggested that air temperature is increasing in these 30 years and sea surface temperature is increasing in summer season.
+For linear regression model, data was divided into 12 months. Data for each month was fitted to a linear regression model. All fitted lines and data were plotted on the same page. The red color indicated a upward trend and blue color indicated a downward trend. For air temperature, fitted lines from all months have a positive slope. For sea surface temperature, fitted lines from May to June and August have a positive slope. It is suggested that air temperature is increasing in these 30 years and sea surface temperature is increasing in the summer season.
 ```{r echo = FALSE , fig.width = 10 ,fig.height = 5}
 #Red indicates an upward trend
 #Blue indicates an downward trend
@@ -234,6 +226,6 @@ for(i in 1:12){
 ```
 
 # 5. Conclusion
-From time series model, both predicted dropping and rising trend of temperature were shown. For linear regression model, a strong rising trend of air temperature was shown. Based on the data of air temperature, a sign of global warming was indicated. However, based on the data of sea surface temperature, sign of global warming is not that clear.
+From the time series model, both predicted dropping and rising trend of temperature were shown. For the linear regression model, a strong rising trend of air temperature was shown. Based on the data of air temperature, a sign of global warming was indicated. Based on the data of sea surface temperature, the sign of global warming is not that intense. However, no conclusion can be drawn regarding whether global warming caused the rising of air temperature in this area. The time series model used in this report is rather simple. A more complex model is likely to give a more accurate prediction. 
 
 
