@@ -2,9 +2,11 @@
 title: "Buoy Project"
 author: "Jason Huang"
 date: "2020/9/25"
-output: 
-  pdf_document: 
+output:
+  pdf_document:
     latex_engine: xelatex
+  html_document:
+    df_print: paged
 ---
 
 ```{r setup, include=FALSE}
@@ -13,72 +15,76 @@ pacman::p_load("knitr","ggplot2","rstanarm","tidyverse","lubridate","zoo","astsa
 ```
 
 
-# Abstract
-This report seeks to use 20-years of data NDBC Station 44013 to analyze climate change problem.
+# 1. Abstract
+This report seeks to use 20-years of data NDBC Station 44013 to analyze climate change problem. After data collection and cleaning, time series model and linear regression model were used to fit the data. Conclusions were drawn based on the results of models.
 
-# Data Collection
+# 2. Data Collection
 Data was abstracted from NDBC website. 30-years of data was collected from 1987 to 2016. Six variables were selected namely, year(YY), month(MM), day(DD), hour(hh), air temperature(ATMP) and sea surface temperature(WTMP). In order to see how the trend of temperature change, the only two related variables ATMP and WTMP were selected.
 ```{r include = FALSE}
-### make URLs
-
-url1 <- "http://www.ndbc.noaa.gov/view_text_file.php?filename=mlrf1h"
-url2 <- ".txt.gz&dir=data/historical/stdmet/"
-
-years <- c(1987:2016)
-
-urls <- str_c(url1, years, url2, sep = "")
-
-filenames <- str_c("ma", years, sep = "")
-
-###  Read the data from the website
-
-N <- length(urls)
-
-for (i in 1:N){
-  suppressMessages( ###  This stops the annoying messages on your screen.  Do this last.
-    assign(filenames[i], read_table(urls[i], col_names = TRUE))
-  )
-  
-  file <- get(filenames[i])
-  
-  x <- ncol(file)
-
-  
-#Since data from different year has different columns, we seperate them and only take the columns we want  
-  if(x %in% c(15,16)){
-      colnames(file)[1] <-"YYYY"
-      colnames(file)[2] <-"MM"
-      colnames(file)[3] <-"DD"
-      colnames(file)[4] <-"hh"
-      colnames(file)[12] <-"Air_tmp"
-      colnames(file)[13] <-"Water_tmp"
-      file <- file[,c(1,2,3,4,12,13)]
-  }
-  if(x==17){
-      colnames(file)[1] <-"YYYY"
-      colnames(file)[2] <-"MM"
-      colnames(file)[3] <-"DD"
-      colnames(file)[4] <-"hh"
-      colnames(file)[13] <-"Air_tmp"
-      colnames(file)[14] <-"Water_tmp"
-      file <- file[,c(1,2,3,4,13,14)]
-  }
-
-#Combine all dataframes
-  if(i == 1){
-    MR <- file
-  }
-
-  else{
-    MR <- rbind.data.frame(MR, file)
-  }
-}
+# ### make URLs
+# 
+# url1 <- "http://www.ndbc.noaa.gov/view_text_file.php?filename=mlrf1h"
+# url2 <- ".txt.gz&dir=data/historical/stdmet/"
+# 
+# years <- c(1987:2016)
+# 
+# urls <- str_c(url1, years, url2, sep = "")
+# 
+# filenames <- str_c("ma", years, sep = "")
+# 
+# ###  Read the data from the website
+# 
+# N <- length(urls)
+# 
+# options(timeout= 40000000)
+# 
+# for (i in 1:N){
+#   suppressMessages( ###  This stops the annoying messages on your screen.  Do this last.
+#     assign(filenames[i], read_table(urls[i], col_names = TRUE))
+#   )
+# 
+#   file <- get(filenames[i])
+# 
+#   x <- ncol(file)
+# 
+# 
+# #Since data from different year has different columns, we seperate them and only take the columns we want
+#   if(x %in% c(15,16)){
+#       colnames(file)[1] <-"YYYY"
+#       colnames(file)[2] <-"MM"
+#       colnames(file)[3] <-"DD"
+#       colnames(file)[4] <-"hh"
+#       colnames(file)[12] <-"Air_tmp"
+#       colnames(file)[13] <-"Water_tmp"
+#       file <- file[,c(1,2,3,4,12,13)]
+#   }
+#   if(x==17){
+#       colnames(file)[1] <-"YYYY"
+#       colnames(file)[2] <-"MM"
+#       colnames(file)[3] <-"DD"
+#       colnames(file)[4] <-"hh"
+#       colnames(file)[13] <-"Air_tmp"
+#       colnames(file)[14] <-"Water_tmp"
+#       file <- file[,c(1,2,3,4,13,14)]
+#   }
+# 
+# #Combine all dataframes
+#   if(i == 1){
+#     MR <- file
+#   }
+# 
+#   else{
+#     MR <- rbind.data.frame(MR, file)
+#   }
+# }
 ```
 
-# Data Cleaning
+# 3. Data Cleaning
 Variable ATMP and WTMP were converted to $double$ and a new variable 'YYYY_MM_DD' was added to the dataset. The new variable is $date$ type. Data with temperature higher than 90℃ were deleted. Average daily temperature was first calculated by taking the mean of 24 hours temperature. Then, average monthly temperature was calculated by taking the mean of average daily temperature per month. The reason why temperature were calculated in this way was that all data was taken into consideration. 
 ```{r include = FALSE}
+MR <- read.csv("MR_data_1987_2016_original.csv",header = TRUE)
 MR_2 <- as_tibble(MR)
+
 #Change type of Air_tmp and Water_tmp from chr to dbl
 MR_2 <- MR_2 %>%
   mutate(Air_tmp = as.double(Air_tmp),
@@ -118,9 +124,9 @@ MR_4 <- inner_join(MR_4_1,MR_4_2)
 write_csv(MR_4,"MR_data_1987_2016.csv")
 ```
 
-# Model Fitting
+# 4. Model Fitting
 Data was first plotted to see if any model could be considered. Time series model was considered given the shape of the plot. Also, linear regression model was considered since it was a very simple model and the sign of the slope can be used to check the trend of climate change.
-```{r echo = FALSE}
+```{r echo = FALSE, fig.width = 10 ,fig.height = 5}
 #Plot data
 #Average Tmp
 MR_4_1 %>%
@@ -134,9 +140,9 @@ MR_4_2 %>%
   geom_point()
 ```
 
-## Time Series Model
+## 4.1 Time Series Model
 Given it was a seasonal data, seasonal ARIMA model was considered. The trend of data within a year was check. After setting the seasonal period $s$ to be 12, ACF and PACF were plotted. By checking the plot, model $ARIMA (1,0,0) \times (0,1,1)_{12}$ was considered. The predicted data in the next 20 years was plotted. From this model, conclusion about global warming can't be drawn. No strong sign of rise or drop in temperature was shown from model. However, sign of rise in air temperature and drop in sea surface temperature were shown in the predicted data plot.
-```{r echo = FALSE, results=hide}
+```{r echo = FALSE, results = "hide", warning = FALSE , fig.width = 10 ,fig.height = 5}
 #Check the trend within a year
 MR_1988 <- filter(MR_4,year(month)==1988)
 MR_1988 %>%
@@ -151,6 +157,7 @@ TS_MR_4_1 <- ts(select(MR_4_1,Avg_Air_tmp))
 diff12 = diff(TS_MR_4_1,12)
 
 #check acf pacf
+par(mfrow=c(2,1))
 acf2(diff12,48)
 
 #fit model
@@ -166,6 +173,7 @@ TS_MR_4_2 <- ts(select(MR_4_2,Avg_Water_tmp))
 diff12 = diff(TS_MR_4_2,12)
 
 #check acf pacf
+par(mfrow=c(2,1))
 acf2(diff12,48)
 
 #fit model
@@ -175,9 +183,9 @@ sarima(TS_MR_4_2,1,0,0,0,1,1,12,details = FALSE,Model = FALSE)
 sarima.for(TS_MR_4_2,240,1,0,0,0,1,1,12)
 ```
 
-## Linear Regression Model
+## 4.2 Linear Regression Model
 For linear regression model, data was divided into 12 month. Data for each month was fitted to a linear regression model. All fitted lines and data were plotted in the same page. Red color indicated the upward trend and blue color indicated the downward trend. For air temperatue, fitted lines from all months have positive slope. For sea surface temperature, fitted lines from May to June and August have positive slope. It is suggested that air temperature is increasing in these 30 years and sea surface temperature is increasing in summer season.
-```{r echo = FALSE}
+```{r echo = FALSE , fig.width = 10 ,fig.height = 5}
 #Red indicates an upward trend
 #Blue indicates an downward trend
 
@@ -220,7 +228,8 @@ for(i in 1:12){
 }
 
 ```
-# Conclusion
-Two models just offer us a direction about climate change. Firm conclusion about climate change can not be drawn. But still, some useful information was shown from the data and models. From time series model, both predicted dropping and rising trend of temperature were shown. For linear regression model, a strong rising trend of air temperature was shown. Based on the data of air temperature, a sign of global warming was indicated. However, based on the data of sea surface temperature, sign of global warming is not that clear. More research is needed.
+
+# 5. Conclusion
+From time series model, both predicted dropping and rising trend of temperature were shown. For linear regression model, a strong rising trend of air temperature was shown. Based on the data of air temperature, a sign of global warming was indicated. However, based on the data of sea surface temperature, sign of global warming is not that clear. More research is needed.
 
 
