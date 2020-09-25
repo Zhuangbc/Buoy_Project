@@ -75,7 +75,7 @@ for (i in 1:N){
 
 #Data Cleaning
 Variable ATMP and WTMP were converted to $double$ and a new variable 'YYYY_MM_DD' was added to the dataset. The new variable is $date$ type. Data with temperature higher than 90℃ were deleted. Average daily temperature was first calculated by taking the mean of 24 hours temperature. Then, average monthly temperature was calculated by taking the mean of average daily temperature per month. The reason why temperature were calculated in this way was that all data was taken into consideration. 
-```{r echo = FALSE eval = FALSE}
+```{r echo = FALSE,eval = FALSE}
 MR_2 <- as_tibble(MR)
 #Change type of Air_tmp and Water_tmp from chr to dbl
 MR_2 <- MR_2 %>%
