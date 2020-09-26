@@ -1,6 +1,6 @@
 ---
 title: "Buoy Project"
-author: "Jason Huang"
+author: "Zijie Huang"
 date: "2020/9/25"
 output:
   pdf_document:
@@ -11,15 +11,15 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-pacman::p_load("knitr","ggplot2","rstanarm","tidyverse","lubridate","zoo","astsa")
+pacman::p_load("knitr","ggplot2","rstanarm","tidyverse","lubridate","astsa")
 ```
 
 
 # 1. Abstract
-This report seeks to use 20-years of data NDBC Station 44013 to check whether there is global warming. After data collection and cleaning, time series model and linear regression model were used to fit the data. Conclusions were drawn based on the results of models.
+This report seeks to use 20-years of data NDBC Station 44013 to check whether there is global warming. After data collection and cleaning, time series model and linear regression model were used to fit the data. Conclusions were drawn based on the results of models. Package Knitr (Yihui Xie, 2020) was used to compile this report.
 
 # 2. Data Collection
-Data was abstracted from the NDBC website. 30-years of data was collected from 1987 to 2016. Six variables were selected namely, year(YY), month(MM), day(DD), hour(hh), air temperature(ATMP) and sea surface temperature(WTMP). In order to see how the trend of temperature change, the only two related variables ATMP and WTMP were selected.
+Data was abstracted from the NDBC website: https://www.ndbc.noaa.gov/station_history.php?station=44013. 30-years of data was collected from 1987 to 2016. Six variables were selected namely, year(YY), month(MM), day(DD), hour(hh), air temperature(ATMP) and sea surface temperature(WTMP). In order to see how the trend of temperature change, the only two related variables ATMP and WTMP were selected.
 ```{r include = FALSE}
 #You can use this chunk to read from website, however sometimes due to connection issue, 
 #this could fail to compile. Therefore, you can directly read local csv file in next chunk. 
@@ -27,69 +27,69 @@ Data was abstracted from the NDBC website. 30-years of data was collected from 1
 
 ### make URLs
 
-url1 <- "http://www.ndbc.noaa.gov/view_text_file.php?filename=mlrf1h"
-url2 <- ".txt.gz&dir=data/historical/stdmet/"
-
-years <- c(1987:2016)
-
-urls <- str_c(url1, years, url2, sep = "")
-
-filenames <- str_c("ma", years, sep = "")
-
-###  Read the data from the website
-
-N <- length(urls)
-
-options(timeout= 40000000)
-
-for (i in 1:N){
-  suppressMessages( ###  This stops the annoying messages on your screen.  Do this last.
-    assign(filenames[i], read_table(urls[i], col_names = TRUE))
-  )
-
-  file <- get(filenames[i])
-
-  x <- ncol(file)
-
-
-#Since data from different year has different columns, we seperate them and only take the columns we want
-  if(x %in% c(15,16)){
-      colnames(file)[1] <-"YYYY"
-      colnames(file)[2] <-"MM"
-      colnames(file)[3] <-"DD"
-      colnames(file)[4] <-"hh"
-      colnames(file)[12] <-"Air_tmp"
-      colnames(file)[13] <-"Water_tmp"
-      file <- file[,c(1,2,3,4,12,13)]
-  }
-  if(x==17){
-      colnames(file)[1] <-"YYYY"
-      colnames(file)[2] <-"MM"
-      colnames(file)[3] <-"DD"
-      colnames(file)[4] <-"hh"
-      colnames(file)[13] <-"Air_tmp"
-      colnames(file)[14] <-"Water_tmp"
-      file <- file[,c(1,2,3,4,13,14)]
-  }
-
-#Combine all dataframes
-  if(i == 1){
-    MR <- file
-  }
-
-  else{
-    MR <- rbind.data.frame(MR, file)
-  }
-}
+# url1 <- "http://www.ndbc.noaa.gov/view_text_file.php?filename=mlrf1h"
+# url2 <- ".txt.gz&dir=data/historical/stdmet/"
+# 
+# years <- c(1987:2016)
+# 
+# urls <- str_c(url1, years, url2, sep = "")
+# 
+# filenames <- str_c("ma", years, sep = "")
+# 
+# ###  Read the data from the website
+# 
+# N <- length(urls)
+# 
+# options(timeout= 40000000)
+# 
+# for (i in 1:N){
+#   suppressMessages( ###  This stops the annoying messages on your screen.  Do this last.
+#     assign(filenames[i], read_table(urls[i], col_names = TRUE))
+#   )
+# 
+#   file <- get(filenames[i])
+# 
+#   x <- ncol(file)
+# 
+# 
+# #Since data from different year has different columns, we seperate them and only take the columns we want
+#   if(x %in% c(15,16)){
+#       colnames(file)[1] <-"YYYY"
+#       colnames(file)[2] <-"MM"
+#       colnames(file)[3] <-"DD"
+#       colnames(file)[4] <-"hh"
+#       colnames(file)[12] <-"Air_tmp"
+#       colnames(file)[13] <-"Water_tmp"
+#       file <- file[,c(1,2,3,4,12,13)]
+#   }
+#   if(x==17){
+#       colnames(file)[1] <-"YYYY"
+#       colnames(file)[2] <-"MM"
+#       colnames(file)[3] <-"DD"
+#       colnames(file)[4] <-"hh"
+#       colnames(file)[13] <-"Air_tmp"
+#       colnames(file)[14] <-"Water_tmp"
+#       file <- file[,c(1,2,3,4,13,14)]
+#   }
+# 
+# #Combine all dataframes
+#   if(i == 1){
+#     MR <- file
+#   }
+# 
+#   else{
+#     MR <- rbind.data.frame(MR, file)
+#   }
+# }
 ```
 
 # 3. Data Cleaning
-Variable ATMP and WTMP were converted to $double$ and a new variable 'YYYY_MM_DD' was added to the dataset. The new variable is $date$ type. Data with temperatures higher than 90℃ were deleted. The Average daily temperature was first calculated by taking the mean of 24 hours temperature. Then, the average monthly temperature was calculated by taking the mean of the average daily temperature per month. The reason why the temperature were calculated in this way was that all data was taken into consideration. 
+Package lubridate (Grolemund, Wickham 2011) and package tidyverse (Wickham et al., 2019) were used during data cleaning. Variable ATMP and WTMP were converted to $double$ and a new variable 'YYYY_MM_DD' was added to the dataset. The new variable is $date$ type. Data with temperatures higher than 90℃ were deleted. The Average daily temperature was first calculated by taking the mean of 24 hours temperature. Then, the average monthly temperature was calculated by taking the mean of the average daily temperature per month. The reason why the temperature were calculated in this way was that all data was taken into consideration. 
 ```{r include = FALSE}
 #This is the second method to get the data instead of reading it from website. 
 #Just commend the first chunk and uncommend the following line if you wish you use local csv.file.
 
-# MR <- read.csv("MR_data_1987_2016_original.csv",header = TRUE)
+MR <- read.csv("MR_data_1987_2016_original.csv",header = TRUE)
 MR_2 <- as_tibble(MR)
 
 #Change type of Air_tmp and Water_tmp from chr to dbl
@@ -132,7 +132,7 @@ write_csv(MR_4,"MR_data_1987_2016.csv")
 ```
 
 # 4. Model Fitting
-Data was first plotted to see if any model could be considered. The time series model was considered given the shape of the plot. Also, the linear regression model was considered since it was a very simple model and the sign of the slope can be used to check the trend of climate change.
+Package ggplot2 (Wickham, 2009) was used to plot data. Data was first plotted. The time series model was considered given the shape of the plot. The linear regression model was considered since it was a very simple model and the sign of the slope can be used to check the trend of climate change.
 ```{r echo = FALSE, fig.width = 10 ,fig.height = 5}
 #Plot data
 #Average Tmp
@@ -148,7 +148,7 @@ MR_4_2 %>%
 ```
 
 ## 4.1 Time Series Model
-Given it was a seasonal data, seasonal ARIMA model was considered. The trend of data within a year was check. After setting the seasonal period $s$ to be 12, ACF and PACF were plotted. By checking the plot, model $ARIMA (1,0,0) \times (0,1,1)_{12}$ was considered. The predicted data in the next 20 years was plotted. From this model, conclusion about global warming can't be drawn. No strong sign of rising or dropping in temperature was shown from the model. However, signs of a rise in air temperature and a drop in sea surface temperature were shown in the predicted data plot.
+Package astsa (Stoffer, 2020) was used to perform time series analysis. Given it was a seasonal data, seasonal ARIMA model was considered. The trend of data within a year was check. After setting the seasonal period $s$ to be 12, ACF and PACF were plotted. By checking the plot, model $ARIMA (1,0,0) \times (0,1,1)_{12}$ was considered. The predicted data in the next 20 years was plotted. From this model, conclusion about global warming can't be drawn. No strong sign of rising or dropping in temperature was shown from the model. However, signs of a rise in air temperature and a drop in sea surface temperature were shown in the predicted data plot.
 ```{r echo = FALSE, results = "hide", warning = FALSE , fig.width = 10 ,fig.height = 4}
 #Check the trend within a year
 MR_1988 <- filter(MR_4,year(month)==1988)
@@ -180,7 +180,7 @@ sarima.for(TS_MR_4_2,240,1,0,0,0,1,1,12)
 ```
 
 ## 4.2 Linear Regression Model
-For linear regression model, data was divided into 12 months. Data for each month was fitted to a linear regression model. All fitted lines and data were plotted on the same page. The red color indicated a upward trend and blue color indicated a downward trend. For air temperature, fitted lines from all months have a positive slope. For sea surface temperature, fitted lines from May to June and August have a positive slope. It is suggested that air temperature is increasing in these 30 years and sea surface temperature is increasing in the summer season.
+Package rstanarm (Goodrich B, Gabry J, Ali I & Brilleman S., 2020) was used to perform linear regression analysis. For linear regression model, data was divided into 12 months. Data for each month was fitted to a linear regression model. All fitted lines and data were plotted on the same page. The red color indicated a upward trend and blue color indicated a downward trend. For air temperature, fitted lines from all months have a positive slope. For sea surface temperature, fitted lines from May to June and August have a positive slope. It is suggested that air temperature is increasing in these 30 years and sea surface temperature is increasing in the summer season.
 ```{r echo = FALSE , fig.width = 10 ,fig.height = 5}
 #Red indicates an upward trend
 #Blue indicates an downward trend
@@ -226,6 +226,55 @@ for(i in 1:12){
 ```
 
 # 5. Conclusion
-From the time series model, both predicted dropping and rising trend of temperature were shown. For the linear regression model, a strong rising trend of air temperature was shown. Based on the data of air temperature, a sign of global warming was indicated. Based on the data of sea surface temperature, the sign of global warming is not that intense. However, no conclusion can be drawn regarding whether global warming caused the rising of air temperature in this area. The time series model used in this report is rather simple. A more complex model is likely to give a more accurate prediction. 
+From the time series model, both predicted dropping and rising trend of temperature were shown. For the linear regression model, a strong rising trend of air temperature was shown. Based on the data of air temperature, a sign of global warming was indicated. Based on the data of sea surface temperature, the sign of global warming is not that intense. However, no conclusion can be drawn regarding whether global warming caused the rising of air temperature in this area. Also, the time series model used in this report is rather simple. A more complex model is likely to give a more accurate prediction. 
+
+# 6. Reference
+1. R Core Team (2020). R: A language and environment for\
+   statistical computing. R Foundation for Statistical\
+   Computing, Vienna, Austria. URL https://www.R-project.org/. \
+
+2. Wickham et al., (2019). Welcome to the tidyverse. Journal of Open Source\
+   Software, 4(43), 1686, https://doi.org/10.21105/joss.01686 \
+  
+3. Goodrich B, Gabry J, Ali I & Brilleman S. (2020). rstanarm:\
+   Bayesian applied regression modeling via Stan. R package\
+   version 2.21.1 https://mc-stan.org/rstanarm. \
+
+   Brilleman SL, Crowther MJ, Moreno-Betancur M, Buros Novik J\
+   & Wolfe R. Joint longitudinal and time-to-event models via\
+   
+   Stan. StanCon 2018. 10-12 Jan 2018. Pacific Grove, CA, USA.\
+   https://github.com/stan-dev/stancon_talks/ \
+
+4. Garrett Grolemund, Hadley Wickham (2011). Dates and Times\
+   Made Easy with lubridate. Journal of Statistical Software,\
+   40(3), 1-25. URL http://www.jstatsoft.org/v40/i03/. \
+
+5. H. Wickham. ggplot2: Elegant Graphics for Data Analysis.\
+   Springer-Verlag New York, 2016. \
+
+6. David Stoffer (2020). astsa: Applied Statistical Time\
+   Series Analysis. R package version 1.10.
+   https://CRAN.R-project.org/package=astsa \
+  
+7. Yihui Xie (2020). knitr: A General-Purpose Package for\
+   Dynamic Report Generation in R. R package version 1.29. \
+
+   Yihui Xie (2015) Dynamic Documents with R and knitr. 2nd
+   edition. Chapman and Hall/CRC. ISBN 978-1498716963 \
+
+   Yihui Xie (2014) knitr: A Comprehensive Tool for \
+   Reproducible Research in R. In Victoria Stodden, Friedrich\
+   Leisch and Roger D. Peng, editors, Implementing\
+   Reproducible Computational Research. Chapman and Hall/CRC.\
+   ISBN 978-1466561595 \
+```{r include = FALSE}
+citation()
+citation("rstanarm")
+citation("ggplot2")
+citation("knitr")
+citation("lubridate")
+citation("astsa")
+```
 
 
